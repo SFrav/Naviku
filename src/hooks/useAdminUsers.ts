@@ -12,7 +12,6 @@ export function useAdminUsers(query: string, roleFilter: string) {
       setLoading(true);
       const p_query = query?.trim() ? query.trim() : null;
 
-      // Map UI filter values -> DB roles (updated for new role structure)
       const roleMap: Record<string, string | null> = {
         all: null,
         admin: 'admin',
@@ -34,10 +33,8 @@ export function useAdminUsers(query: string, roleFilter: string) {
         console.error('get_users_with_profiles error', error);
         setUsers([]);
       } else {
-        // Map the data to include backward compatibility and handle null values
         const mappedUsers = (data ?? []).map((user: any) => ({
           ...user,
-          // Handle role as text (pending users) or enum
           role: user.role ?? 'pending'
         }));
         setUsers(mappedUsers);
@@ -77,8 +74,8 @@ export function useAdminUsers(query: string, roleFilter: string) {
       });
 
       if (rpcError) {
-        console.error('❌ RPC Update Error:', rpcError);
-        console.error('❌ Error details:', {
+        console.error('RPC Update Error:', rpcError);
+        console.error('Error details:', {
           code: rpcError.code,
           message: rpcError.message,
           details: rpcError.details,
@@ -97,7 +94,7 @@ export function useAdminUsers(query: string, roleFilter: string) {
 
       // Check if update was successful
       if (rpcResult === false || rpcResult === null) {
-        console.error('❌ RPC returned false - profile may not exist');
+        console.error('RPC returned false - profile may not exist');
         return { 
           success: false, 
           error: 'Update failed: User profile not found or update failed.' 
@@ -112,12 +109,12 @@ export function useAdminUsers(query: string, roleFilter: string) {
         .maybeSingle();
 
       if (fetchError) {
-        console.error('❌ Error fetching updated data:', fetchError);
+        console.error('Error fetching updated data:', fetchError);
         // Still return success if RPC succeeded
         return { success: true };
       }
 
-      console.log('✅ Updated data:', updateData);
+      console.log('Updated data:', updateData);
       
       // Check if values actually changed
       if (updateData) {
@@ -128,12 +125,12 @@ export function useAdminUsers(query: string, roleFilter: string) {
           updateData.manager_id === managerId;
         
         if (!valuesMatch) {
-          console.warn('⚠️ Values do not match after update:', {
+          console.warn('Values do not match after update:', {
             expected: { role, entityId, teamId, managerId },
             actual: updateData
           });
         } else {
-          console.log('✅ All values match after update');
+          console.log('All values match after update');
         }
 
         // Update local state immediately with updated data
@@ -153,14 +150,14 @@ export function useAdminUsers(query: string, roleFilter: string) {
       }
 
       // Refetch to get latest data from database (with delay to ensure DB is updated)
-      console.log('🔄 Refetching user list...');
+      console.log('Refetching user list...');
       setTimeout(() => {
         refetch();
       }, 500);
       
       return { success: true, data: updateData };
     } catch (error: any) {
-      console.error('💥 Unexpected error in updateUserProfile:', error);
+      console.error('Unexpected error in updateUserProfile:', error);
       return { success: false, error: error.message };
     }
   };

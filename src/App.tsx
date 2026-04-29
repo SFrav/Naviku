@@ -66,7 +66,7 @@ const App = () => (
           } />
           <Route path="/sales-dashboard" element={
             <ProtectedRoute>
-              <RoleBasedRoute allowedRoles={['account_manager']}>
+              <RoleBasedRoute allowedRoles={['account_manager', 'staff']}>
                 <CRMLayout>
                   <AccountManagerDashboard />
                 </CRMLayout>
@@ -243,7 +243,9 @@ const App = () => (
           } />
           <Route path="/pending" element={
             <ProtectedRoute>
-              <PendingApproval />
+              <RoleBasedRoute allowedRoles={['pending']}>
+                <PendingApproval />
+              </RoleBasedRoute>
             </ProtectedRoute>
           } />
           <Route path="/admin/dashboard" element={

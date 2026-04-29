@@ -16,6 +16,7 @@ export default function Profile() {
 
   const [formData, setFormData] = useState({
     full_name: profile?.full_name || '',
+    phone: profile?.phone || '',
   });
 
   const handleInputChange = (field: string, value: string) => {
@@ -33,6 +34,7 @@ export default function Profile() {
     try {
       const { error } = await updateProfile({
         full_name: formData.full_name,
+        phone: formData.phone,
       });
 
       if (error) {
@@ -58,11 +60,11 @@ export default function Profile() {
     }
   };
 
-  // Update form data when profile loads
   useEffect(() => {
     if (profile) {
       setFormData({
         full_name: profile.full_name || '',
+        phone: profile.phone || '',
       });
     }
   }, [profile, user?.email]);
@@ -97,22 +99,11 @@ export default function Profile() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">Profile Settings</h1>
-        <p className="text-muted-foreground">
-          Manage your personal information and account settings.
-        </p>
-      </div>
-
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Personal Information
-          </CardTitle>
+          <CardTitle>Personal Information</CardTitle>      {/* no flex */}
           <CardDescription>
-            Update your name, contact details, and address information.
+            Manage your personal information
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -143,6 +134,20 @@ export default function Profile() {
                   value={user?.email || ''}
                   disabled
                   className="bg-muted text-muted-foreground cursor-not-allowed"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="phone" className="flex items-center gap-2">
+                  <User className="h-4 w-4" />
+                  Phone
+                </Label>
+                <Input
+                  id="phone"
+                  value={formData.phone}
+                  onChange={(e) => handleInputChange('phone', e.target.value)}
+                  placeholder="Enter your phone number"
+                  //required
                 />
               </div>
 
@@ -179,6 +184,5 @@ export default function Profile() {
           </form>
         </CardContent>
       </Card>
-    </div>
   );
 }

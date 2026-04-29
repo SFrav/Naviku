@@ -1,18 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Search, Plus, Download, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
+import React, { useEffect, useMemo } from 'react';
+import { Search, Plus, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { AddContactModal } from '@/components/modals/AddContactModal';
-import { EditContactModal } from '@/components/modals/EditContactModal';
-import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { useContacts } from '@/hooks/useContacts';
 import { useToast } from '@/hooks/use-toast';
 
-interface Contact {
+export interface Contact {
   id: string;
   name: string;
   email: string | null;
@@ -22,177 +19,90 @@ interface Contact {
   created_at: string;
 }
 
-export const ContactsTable: React.FC = () => {
-  const { user } = useAuth();
+interface ContactsTableProps {
+  onEditContact: (contact: Contact) => void;
+}
+
+export const ContactsTable: React.FC<ContactsTableProps> = ({ onEditContact }) => {
+  const { contacts, loading, refetch } = useContacts();
   const { toast } = useToast();
-  const [contacts, setContacts] = useState<Contact[]>([]);
-  const [filteredContacts, setFilteredContacts] = useState<Contact[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingContact, setEditingContact] = useState<Contact | null>(null);
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [isAddModalOpen, setIsAddModalOpen] = React.useState(false);
 
-  const fetchContacts = async () => {
-    if (!user) return;
 
-    try {
-      setIsLoading(true);
-      const { data, error } = await supabase
-        .from('contacts')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      setContacts(data || []);
-      setFilteredContacts(data || []);
-    } catch (error) {
-      console.error('Error fetching contacts:', error);
-      toast({
-        title: "Error",
-        description: "Failed to load contacts.",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchContacts();
-  }, [user]);
-
-  useEffect(() => {
-    if (!searchTerm) {
-      setFilteredContacts(contacts);
-    } else {
-      const filtered = contacts.filter(contact =>
-        contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        contact.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        contact.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        contact.company?.toLowerCase().includes(searchTerm.toLowerCase())
-      );
-      setFilteredContacts(filtered);
-    }
+  const filteredContacts = useMemo(() => {
+    if (!searchTerm) return contacts;
+    const q = searchTerm.toLowerCase();
+    return contacts.filter(
+      (c) =>
+        c.name.toLowerCase().includes(q) ||
+        c.email?.toLowerCase().includes(q) ||
+        c.phone?.toLowerCase().includes(q) ||
+        c.company?.toLowerCase().includes(q)
+    );
   }, [searchTerm, contacts]);
-
-  const handleDeleteContact = async (contactId: string) => {
-    try {
-      const { error } = await supabase
-        .from('contacts')
-        .delete()
-        .eq('id', contactId)
-        .eq('user_id', user?.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: "Contact deleted successfully!",
-      });
-
-      fetchContacts();
-    } catch (error) {
-      console.error('Error deleting contact:', error);
-      toast({
-        title: "Error",
-        description: "Failed to delete contact.",
-        variant: "destructive",
-      });
-    }
-  };
 
   const exportToCSV = () => {
     const headers = ['Name', 'Email', 'Phone', 'Company', 'Notes', 'Created At'];
-    const csvContent = [
-      headers.join(','),
-      ...filteredContacts.map(contact => [
-        `"${contact.name}"`,
-        `"${contact.email || ''}"`,
-        `"${contact.phone || ''}"`,
-        `"${contact.company || ''}"`,
-        `"${contact.notes || ''}"`,
-        `"${new Date(contact.created_at).toLocaleDateString()}"`,
-      ].join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `contacts-${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    window.URL.revokeObjectURL(url);
-
-    toast({
-      title: "Success",
-      description: "Contacts exported to CSV!",
-    });
+    const rows = filteredContacts.map((c) => [
+      `"${c.name}"`,
+      `"${c.email ?? ''}"`,
+      `"${c.phone ?? ''}"`,
+      `"${c.company ?? ''}"`,
+      `"${c.notes ?? ''}"`,
+      `"${new Date(c.created_at).toLocaleDateString()}"`,
+    ].join(','));
+    const blob = new Blob([[headers.join(','), ...rows].join('\n')], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `contacts-${new Date().toISOString().split('T')[0]}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast({ title: 'Success', description: 'Contacts exported to CSV!' });
   };
-
-  if (isLoading) {
-    return (
-      <Card>
-        <CardContent className="p-8">
-          <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
           <CardTitle>Contacts</CardTitle>
-          <CardDescription>
-            Manage your contact database and customer information
-          </CardDescription>
+          <CardDescription>Manage your contact database. Click a row to edit.</CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Search and Actions Bar */}
           <div className="flex flex-col sm:flex-row gap-4 mb-6">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground h-4 w-4" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground h-4 w-4" />
               <Input
-                placeholder="Search contacts by name, email, phone, or company..."
+                placeholder="Search by name, email, phone, or company…"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
             <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={exportToCSV}
-                disabled={filteredContacts.length === 0}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Export CSV
+              <Button variant="outline" onClick={exportToCSV} disabled={filteredContacts.length === 0}>
+                <Download className="h-4 w-4 mr-2" />Export CSV
               </Button>
               <Button onClick={() => setIsAddModalOpen(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Contact
+                <Plus className="h-4 w-4 mr-2" />Add Contact
               </Button>
             </div>
           </div>
 
-          {/* Contacts Table */}
-          {filteredContacts.length === 0 ? (
-            <div className="text-center py-8">
-              <div className="text-muted-foreground mb-4">
-                {searchTerm ? 'No contacts found matching your search.' : 'No contacts yet.'}
-              </div>
+          {loading ? (
+            <div className="flex justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+            </div>
+          ) : filteredContacts.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              {searchTerm ? 'No contacts match your search.' : 'No contacts yet.'}
               {!searchTerm && (
-                <Button onClick={() => setIsAddModalOpen(true)}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Your First Contact
-                </Button>
+                <div className="mt-4">
+                  <Button onClick={() => setIsAddModalOpen(true)}>
+                    <Plus className="h-4 w-4 mr-2" />Add Your First Contact
+                  </Button>
+                </div>
               )}
             </div>
           ) : (
@@ -200,82 +110,50 @@ export const ContactsTable: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow>
-                     <TableHead>Name</TableHead>
-                     <TableHead>Email</TableHead>
-                     <TableHead>Phone</TableHead>
-                     <TableHead>Company</TableHead>
-                     <TableHead>Notes</TableHead>
-                     <TableHead className="w-[100px]">Actions</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead className="hidden sm:table-cell">Email</TableHead>
+                    <TableHead className="hidden md:table-cell">Phone</TableHead>
+                    <TableHead className="hidden lg:table-cell">Company</TableHead>
+                    <TableHead className="text-right text-xs font-normal text-muted-foreground">
+                      Note
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredContacts.map((contact) => (
-                    <TableRow key={contact.id}>
-                      <TableCell className="font-medium">{contact.name}</TableCell>
-                      <TableCell>
-                        {contact.email ? (
+                  {filteredContacts.map((c) => (
+                    <TableRow key={c.id} className="cursor-pointer hover:bg-muted/50" onClick={() => onEditContact(c)}>
+                      <TableCell className="font-medium">{c.name}</TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        {c.email ? (
                           <a
-                            href={`mailto:${contact.email}`}
+                            href={`mailto:${c.email}`}
                             className="text-primary hover:underline"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            {contact.email}
+                            {c.email}
                           </a>
                         ) : (
-                          <span className="text-muted-foreground">-</span>
+                          <span className="text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell>
-                        {contact.phone ? (
+                      <TableCell className="hidden md:table-cell">
+                        {c.phone ? (
                           <a
-                            href={`tel:${contact.phone}`}
+                            href={`tel:${c.phone}`}
                             className="text-primary hover:underline"
+                            onClick={(e) => e.stopPropagation()}
                           >
-                            {contact.phone}
+                            {c.phone}
                           </a>
                         ) : (
-                          <span className="text-muted-foreground">-</span>
+                          <span className="text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell>
-                        {contact.company ? (
-                          <Badge variant="secondary">{contact.company}</Badge>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
-                       </TableCell>
-                       <TableCell>
-                         {contact.notes ? (
-                           <div className="max-w-[200px] truncate" title={contact.notes}>
-                            {contact.notes}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">-</span>
-                        )}
+                      <TableCell className="hidden lg:table-cell">
+                        {c.company ? <Badge variant="secondary">{c.company}</Badge> : <span className="text-muted-foreground">—</span>}
                       </TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => {
-                              setEditingContact(contact);
-                              setIsEditModalOpen(true);
-                            }}>
-                              <Edit className="mr-2 h-4 w-4" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => handleDeleteContact(contact.id)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                      <TableCell className="text-right text-xs text-muted-foreground pl-1 pr-0">
+                        {c.notes ? (<span className="block max-w-[150px] max-h-[50px]" title={c.notes}> {c.notes} </span>) : ('—')}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -289,15 +167,7 @@ export const ContactsTable: React.FC = () => {
               <span>
                 Showing {filteredContacts.length} of {contacts.length} contacts
               </span>
-              {searchTerm && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSearchTerm('')}
-                >
-                  Clear search
-                </Button>
-              )}
+              {searchTerm && <Button variant="ghost" size="sm" onClick={() => setSearchTerm('')}>Clear search</Button>}
             </div>
           )}
         </CardContent>
@@ -306,17 +176,7 @@ export const ContactsTable: React.FC = () => {
       <AddContactModal
         isOpen={isAddModalOpen}
         onClose={() => setIsAddModalOpen(false)}
-        onContactAdded={fetchContacts}
-      />
-
-      <EditContactModal
-        isOpen={isEditModalOpen}
-        onClose={() => {
-          setIsEditModalOpen(false);
-          setEditingContact(null);
-        }}
-        onContactUpdated={fetchContacts}
-        contact={editingContact}
+        onContactAdded={refetch}
       />
     </div>
   );

@@ -73,6 +73,9 @@ const Index = () => {
 
       // Jika sudah lengkap, arahkan sesuai role
       switch (profile.role) {
+        case 'staff':
+          navigate('/sales-dashboard', { replace: true });
+          break;
         case 'account_manager':
           navigate('/sales-dashboard', { replace: true });
           break;

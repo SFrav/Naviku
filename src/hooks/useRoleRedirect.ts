@@ -26,6 +26,11 @@ export const useRoleRedirect = () => {
 
     // Redirect based on role to new dashboard routes
     switch (profile.role) {
+      case 'staff':
+        if (isRootRoute || (isDashboardRoute && currentPath !== '/sales-dashboard')) {
+          navigate('/sales-dashboard', { replace: true });
+        }
+        break;
       case 'account_manager':
         if (isRootRoute || (isDashboardRoute && currentPath !== '/sales-dashboard')) {
           navigate('/sales-dashboard', { replace: true });

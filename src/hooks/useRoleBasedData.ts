@@ -5,7 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 export interface UserProfile {
   id: string;
   full_name: string;
-  role: 'account_manager' | 'head' | 'manager' | 'admin';
+  role: 'staff', | 'account_manager' | 'head' | 'manager' | 'admin';
   entity_id?: string;
   division_id?: string;  // This is "team_id"
   manager_id?: string;
