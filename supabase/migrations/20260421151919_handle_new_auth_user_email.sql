@@ -7,7 +7,7 @@ AS $$
 DECLARE
   v_full_name text;
   v_email text;
-  v_role role_enum;
+  v_role public.role_enum;
 BEGIN
   v_email := NEW.email;
   v_full_name := COALESCE(
@@ -38,7 +38,7 @@ BEGIN
 END;
 $$;
 
-ALTER TYPE role_enum ADD VALUE IF NOT EXISTS 'pending';
+ALTER TYPE public.role_enum ADD VALUE IF NOT EXISTS 'pending';
 
 COMMIT;
 

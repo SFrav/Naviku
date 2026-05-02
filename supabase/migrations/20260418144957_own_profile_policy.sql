@@ -72,7 +72,7 @@ CREATE OR REPLACE FUNCTION public._get_effective_user_profile(p_user_id UUID DEF
 RETURNS TABLE (
   user_id UUID, 
   profile_id UUID, 
-  role role_enum, 
+  role public.role_enum, 
   entity_id UUID,
   division_id UUID
 )

@@ -38,6 +38,6 @@ BEGIN
 END;
 $$;
 
-ALTER TYPE role_enum ADD VALUE IF NOT EXISTS 'pending';
+ALTER TYPE public.role_enum ADD VALUE IF NOT EXISTS 'pending';
 
 COMMIT;

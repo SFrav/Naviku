@@ -56,7 +56,7 @@ CREATE OR REPLACE FUNCTION public.get_current_profile()
 RETURNS TABLE (
   id uuid,
   user_id uuid,
-  role role_enum,
+  role public.role_enum,
   division_id uuid
 )
 LANGUAGE sql
